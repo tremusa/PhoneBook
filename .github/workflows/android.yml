@@ -17,8 +17,12 @@ jobs:
           java-version: '17'
       - name: Android SDK components
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          SDK_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$SDK_HOME" >> "$GITHUB_ENV"
+          SDKMANAGER="$(find "$SDK_HOME/cmdline-tools" -name sdkmanager -type f | head -n 1)"
+          test -n "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
       - name: Configure Gradle
         run: |
           if [ ! -f gradlew ]; then
