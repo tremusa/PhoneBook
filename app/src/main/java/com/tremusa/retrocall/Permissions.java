@@ -1,0 +1,13 @@
+package com.tremusa.retrocall;
+
+import android.Manifest;import android.app.Activity;import android.app.role.RoleManager;import android.content.*;import android.content.pm.PackageManager;import android.os.Build;import android.provider.Telephony;import android.telecom.TelecomManager;
+
+final class Permissions {
+    static final String[] ALL={Manifest.permission.READ_CONTACTS,Manifest.permission.WRITE_CONTACTS,Manifest.permission.READ_CALL_LOG,Manifest.permission.READ_PHONE_STATE,Manifest.permission.CALL_PHONE,Manifest.permission.READ_SMS,Manifest.permission.RECEIVE_SMS,Manifest.permission.SEND_SMS};
+    static boolean has(Context c,String p){return c.checkSelfPermission(p)==PackageManager.PERMISSION_GRANTED;}
+    static boolean dialer(Context c){if(Build.VERSION.SDK_INT>=29){RoleManager r=(RoleManager)c.getSystemService(Context.ROLE_SERVICE);return r!=null&&r.isRoleHeld(RoleManager.ROLE_DIALER);} TelecomManager t=(TelecomManager)c.getSystemService(Context.TELECOM_SERVICE);return t!=null&&c.getPackageName().equals(t.getDefaultDialerPackage());}
+    static boolean sms(Context c){if(Build.VERSION.SDK_INT>=29){RoleManager r=(RoleManager)c.getSystemService(Context.ROLE_SERVICE);return r!=null&&r.isRoleHeld(RoleManager.ROLE_SMS);}return c.getPackageName().equals(Telephony.Sms.getDefaultSmsPackage(c));}
+    static void requestDialer(Activity a){try {if(Build.VERSION.SDK_INT>=29){RoleManager r=(RoleManager)a.getSystemService(Context.ROLE_SERVICE);if(r!=null&&r.isRoleAvailable(RoleManager.ROLE_DIALER)){a.startActivityForResult(r.createRequestRoleIntent(RoleManager.ROLE_DIALER),110);return;}}Intent i=new Intent(TelecomManager.ACTION_CHANGE_DEFAULT_DIALER);i.putExtra(TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME,a.getPackageName());a.startActivityForResult(i,110);}catch(Exception e){RetroUi.toast(a,"Telefon rolü açılamadı: "+e.getMessage());}}
+    static void requestSms(Activity a){try{if(Build.VERSION.SDK_INT>=29){RoleManager r=(RoleManager)a.getSystemService(Context.ROLE_SERVICE);if(r!=null&&r.isRoleAvailable(RoleManager.ROLE_SMS)){a.startActivityForResult(r.createRequestRoleIntent(RoleManager.ROLE_SMS),111);return;}}Intent i=new Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT);i.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME,a.getPackageName());a.startActivityForResult(i,111);}catch(Exception e){RetroUi.toast(a,"SMS rolü açılamadı: "+e.getMessage());}}
+    static void askRuntime(Activity a){java.util.ArrayList<String> missing=new java.util.ArrayList<>();for(String perm:ALL)if(!has(a,perm))missing.add(perm);if(Build.VERSION.SDK_INT>=33&&!has(a,Manifest.permission.POST_NOTIFICATIONS))missing.add(Manifest.permission.POST_NOTIFICATIONS);if(!missing.isEmpty())a.requestPermissions(missing.toArray(new String[0]),112);}
+}

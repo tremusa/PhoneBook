@@ -1,0 +1,17 @@
+package com.tremusa.retrocall;
+
+import android.Manifest;import android.app.*;import android.content.*;import android.database.Cursor;import android.os.Bundle;import android.provider.Telephony;import android.telephony.PhoneNumberUtils;import android.view.*;import android.widget.*;import java.util.*;
+
+public class ChatActivity extends Activity {
+    private String address;private LinearLayout root,history;private EditText input;
+    @Override public void onCreate(Bundle b){super.onCreate(b);address=getIntent().getStringExtra("address");if(address==null)address="";draw();}
+    @Override protected void onResume(){super.onResume();if(root!=null)load();}
+    private void draw(){root=RetroUi.root(this,"✉  MESAJ");LinearLayout row=RetroUi.row(this);TextView person=RetroUi.text(this,"▣ "+PhoneData.lookup(this,address)+"\n"+address,16,true);person.setPadding(RetroUi.d(this,8),0,0,0);RetroUi.weighted(row,person,64);RetroUi.add(row,RetroUi.button(this,"☎ ARA",false,()->PhoneData.call(this,address)),84,64);RetroUi.panel(root,row,70);RetroUi.gap(root,8);
+        ScrollView s=new ScrollView(this);history=RetroUi.column(this);history.setPadding(RetroUi.d(this,3),RetroUi.d(this,3),RetroUi.d(this,3),RetroUi.d(this,3));s.addView(history);root.addView(s,new LinearLayout.LayoutParams(-1,0,1));
+        LinearLayout send=RetroUi.row(this);input=new EditText(this);input.setTextColor(RetroUi.INK);input.setHint("SMS yaz...");input.setTextSize(16);input.setMinLines(1);input.setMaxLines(4);input.setBackground(new RetroUi.PixelBackground(RetroUi.PAPER,RetroUi.INK));RetroUi.weighted(send,input,-1);RetroUi.add(send,RetroUi.button(this,"➤",true,()->send()),63,64);RetroUi.add(root,send,-1,66);load();}
+    private void load(){if(history==null)return;history.removeAllViews();if(!Permissions.has(this,Manifest.permission.READ_SMS)){RetroUi.add(history,RetroUi.button(this,"SMS İZNİ VER",false,()->Permissions.askRuntime(this)),-1,55);return;}
+        ArrayList<String[]> data=new ArrayList<>();try(Cursor cr=getContentResolver().query(Telephony.Sms.CONTENT_URI,new String[]{Telephony.Sms.ADDRESS,Telephony.Sms.BODY,Telephony.Sms.TYPE,Telephony.Sms.DATE},null,null,Telephony.Sms.DATE+" DESC")){if(cr!=null)while(cr.moveToNext()&&data.size()<300){String a=cr.getString(0);if(a!=null&&PhoneNumberUtils.compare(a,address))data.add(new String[]{cr.getString(1),cr.getString(2),new java.text.SimpleDateFormat("dd.MM HH:mm",Locale.getDefault()).format(new Date(cr.getLong(3)))});}}catch(Exception e){RetroUi.toast(this,"Mesajlar okunamadı");}
+        Collections.reverse(data);for(String[] m:data){boolean outgoing="2".equals(m[1]);TextView v=RetroUi.text(this,(outgoing?"► ":"◄ ")+(m[0]==null?"":m[0])+"\n"+m[2],15,false);v.setPadding(RetroUi.d(this,11),RetroUi.d(this,13),RetroUi.d(this,11),RetroUi.d(this,13));v.setBackground(new RetroUi.PixelBackground(outgoing?RetroUi.GRAY:RetroUi.PAPER,RetroUi.INK));LinearLayout.LayoutParams lp=RetroUi.p(this,-1,-2);lp.setMargins(outgoing?RetroUi.d(this,43):0,0,outgoing?0:RetroUi.d(this,43),RetroUi.d(this,7));history.addView(v,lp);}
+    }
+    private void send(){String text=input.getText().toString().trim();if(text.isEmpty())return;try{SmsSender.send(this,address,text);input.setText("");RetroUi.toast(this,"SMS gönderiliyor...");root.postDelayed(this::load,2400);}catch(Exception e){new AlertDialog.Builder(this).setTitle("SMS gönderilemedi").setMessage(e.getMessage()).setPositiveButton("TAMAM",null).show();}}
+}
